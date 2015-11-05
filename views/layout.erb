@@ -11,15 +11,21 @@
       <div class="navbar-inner">
         <div class="container">
             <ul class="nav">
-              <li><a href="/">Nav Item</a></li>
+              <li><a href="/">Start Over</a></li>
             </ul>
         </div>
       </div>
     </div>
 
   <div class="container">
-    <%if @error %>
-      <div class="alert alert-error"><%=@error%></div>
+    <% if @error %>
+      <div class="alert alert-error"><%= @error %></div>
+    <% end %>
+    <% if @success %>
+      <div class="alert alert-success"><%= @success %></div>
+    <% end %>
+    <% if @info %>
+      <div class="alert alert-info"><%= @info %></div>
     <% end %>
       <%= yield %>
   </div>
