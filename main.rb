@@ -8,6 +8,7 @@ use Rack::Session::Cookie, :key => 'rack.session',
 
 BLACKJACK_AMOUNT = 21
 DEALER_HIT_MIN = 17
+STARTING_POT_AMOUNT = 500
 
 helpers do
   def calculate_total(cards)
@@ -52,17 +53,23 @@ helpers do
   end
 
   def winner!(msg)
-    @success = "<strong>#{session[:player_name]} wins!</strong> #{msg}"
+    @winner = "<strong>#{session[:player_name]} wins!</strong> #{msg}"
+    session[:player_pot] += session[:player_bet]
     @play_again = true
   end
 
   def loser!(msg)
-    @error = "<strong>#{session[:player_name]} loses!</strong> #{msg}"
-    @play_again = true
+    @loser = "<strong>#{session[:player_name]} loses!</strong> #{msg}"
+    session[:player_pot] -= session[:player_bet]
+    if session[:player_pot] == 0
+      @broke = true
+    else
+      @play_again = true
+    end
   end
 
   def tie!(msg)
-    @info = "<strong>It's a tie! #{msg}</strong>"
+    @tie = "<strong>It's a tie! #{msg}</strong>"
     @play_again = true
   end
 end
@@ -73,6 +80,7 @@ before do
 end
 
 get '/' do
+  session[:player_pot] = STARTING_POT_AMOUNT
   erb :new_game
 end
 
@@ -82,6 +90,24 @@ post '/new_game' do
     halt erb :new_game
   end
   session[:player_name] = params[:player_name]
+  redirect '/bet'
+end
+
+get '/bet' do
+  session[:player_pot]
+  erb :bet
+end
+
+post '/bet' do
+  if params[:bet_amount].empty? || params[:bet_amount].to_i == 0
+    @error = "Please enter an amount to bet."
+    halt erb :bet
+  elsif params[:bet_amount].to_i > session[:player_pot]
+    @error = "#{session[:player_name]} doesn't have that much money to bet!"
+    halt erb :bet
+  else
+    session[:player_bet] = params[:bet_amount].to_i
+  end
   redirect '/game'
 end
 
@@ -97,7 +123,6 @@ get '/game' do
   session[:dealer_cards] << session[:deck].pop
   session[:player_cards] << session[:deck].pop
 
-  @info = "Hi, #{session[:player_name]}!"
   if calculate_total(session[:player_cards]) == BLACKJACK_AMOUNT
     winner!("#{session[:player_name]} hit Blackjack!")
     @show_hit_or_stay_buttons = false
@@ -121,7 +146,7 @@ post '/game/player/hit' do
     @show_flop = false
   end
 
-  erb :game
+  erb :game, layout: false
 end
 
 post '/game/player/stay' do
@@ -147,7 +172,7 @@ get '/game/dealer' do
     #dealer hits
     @show_dealer_hit_button = true
   end
-  erb :game
+  erb :game, layout: false
 end
 
 post '/game/dealer/hit' do
@@ -172,14 +197,12 @@ get '/game/compare' do
     tie!("Both #{session[:player_name]} and the Dealer ended at #{player_total}.")
   end
 
-  erb :game
+  erb :game, layout: false
 end
 
 get '/game_over' do
   erb :game_over
 end
-
-
 
 
 
